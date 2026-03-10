@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安順國小車務系統 - Excel版</title>
+    <style>
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 15px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; }
+        h2 { color: #1a73e8; margin: 0; font-size: 1.4em; }
+        .data-count { font-size: 0.9em; color: #666; }
+
+        /* 搜尋區塊 */
+        .search-area { margin-bottom: 20px; position: relative; display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 12px 15px; border: 2px solid #dfe1e5; border-radius: 8px; font-size: 16px; outline: none; }
+        input[type="text"]:focus { border-color: #1a73e8; }
+        .btn-reset { padding: 10px 15px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; color: #5f6368; }
+
+        /* 表格樣式 - 模擬 Excel */
+        .table-responsive { width: 100%; overflow-x: auto; border-radius: 8px; border: 1px solid #dee2e6; }
+        table { width: 100%; border-collapse: collapse; background: white; min-width: 600px; }
+        th { background: #f8f9fa; color: #1a73e8; font-weight: bold; padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; position: sticky; top: 0; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 15px; color: #333; }
+        tr:hover { background-color: #f1f8ff; }
+        
+        /* 標籤樣式 */
+        .id-badge { background: #e8f0fe; color: #1967d2; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; }
+        .plate-text { font-weight: 600; color: #d93025; font-family: 'Consolas', monospace; }
+        .loc-text { color: #666; font-size: 0.9em; }
+
+        .no-data { text-align: center; padding: 30px; color: #999; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h2>校園車務清冊</h2>
+        <span class="data-count" id="countDisplay">共 136 筆資料</span>
+    </header>
+    
+    <div class="search-area">
+        <input type="text" id="searchInput" placeholder="搜尋姓名、車牌或編號..." oninput="filterTable()">
+        <button class="btn-reset" onclick="resetSearch()">清除</button>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 15%;">編號</th>
+                    <th style="width: 20%;">姓名</th>
+                    <th style="width: 25%;">地點/單位</th>
+                    <th style="width: 20%;">車牌一</th>
+                    <th style="width: 20%;">車牌二</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // --- 完整資料集 (136 筆) ---
+    const dataList = [
+        {"id": "001", "name": "方建良", "loc": "校長室", "p1": "2018-NU", "p2": ""},
+        {"id": "002", "name": "楊淇銘", "loc": "總務處-事務", "p1": "4378-V2", "p2": "BUE-5975"},
+        {"id": "003", "name": "黃子軒", "loc": "總務處-主任", "p1": "3S-9869", "p2": "D5-8802"},
+        {"id": "004", "name": "謝佳霓", "loc": "人事室", "p1": "9711-JK", "p2": ""},
+        {"id": "005", "name": "張依靜", "loc": "教務處-電腦", "p1": "AHW-3571", "p2": ""},
+        {"id": "006", "name": "呂依潔", "loc": "幼稚園", "p1": "AAT-8011", "p2": ""},
+        {"id": "007", "name": "黃素鈺", "loc": "學務處-活動", "p1": "3651-G7", "p2": "2092-R6"},
+        {"id": "008", "name": "陳秀雲", "loc": "教務處-註冊", "p1": "ARV-0591", "p2": ""},
+        {"id": "009", "name": "許淑祉", "loc": "學務處-主任", "p1": "1016-UV", "p2": "BUD-1386"},
+        {"id": "010", "name": "吳世雄", "loc": "510", "p1": "AJQ-2287", "p2": "AWU-9215"},
+        {"id": "011", "name": "洪明訓", "loc": "總務處", "p1": "BAN-3875", "p2": ""},
+        {"id": "012", "name": "葉宗豪", "loc": "學務處-衛生", "p1": "2926-V2", "p2": ""},
+        {"id": "013", "name": "葉美欣", "loc": "健康中心", "p1": "BEC-6369", "p2": ""},
+        {"id": "014", "name": "林育祺", "loc": "輔導室", "p1": "AZP-5096", "p2": "RFH-5316"},
+        {"id": "015", "name": "黃美華", "loc": "207", "p1": "BUB-8150", "p2": ""},
+        {"id": "016", "name": "李秀真", "loc": "206", "p1": "9971-NU", "p2": ""},
+        {"id": "017", "name": "鄭文勝", "loc": "自然", "p1": "7696-QP", "p2": ""},
+        {"id": "018", "name": "王瓊儀", "loc": "203", "p1": "7258-XL", "p2": "CAE-5652"},
+        {"id": "019", "name": "羅衣汝", "loc": "305", "p1": "ARQ5031", "p2": ""},
+        {"id": "020", "name": "何家儀", "loc": "202", "p1": "BMS-1301", "p2": "AKR-9830"},
+        {"id": "021", "name": "黃幸慈", "loc": "301", "p1": "BDA-1722", "p2": ""},
+        {"id": "022", "name": "陳怡汝", "loc": "308", "p1": "7835-XW", "p2": "BTF-3750"},
+        {"id": "023", "name": "葉家豪", "loc": "508", "p1": "BHS-7513", "p2": ""},
+        {"id": "024", "name": "黃玟鳳", "loc": "科任", "p1": "EAE-5560", "p2": ""},
+        {"id": "025", "name": "黃宜錚", "loc": "106", "p1": "9135-JB", "p2": "ACP-1285"},
+        {"id": "026", "name": "林郁芬", "loc": "社會", "p1": "3062-V5", "p2": "AMG-5180"},
+        {"id": "027", "name": "徐心怡", "loc": "107", "p1": "BDF-3992", "p2": "AMK-8321"},
+        {"id": "028", "name": "巫翊菱", "loc": "401", "p1": "BMQ-5963", "p2": ""},
+        {"id": "029", "name": "許峻祥", "loc": "體育", "p1": "BYW-7622", "p2": ""},
+        {"id": "030", "name": "曾莉雅", "loc": "403", "p1": "BMP-5380", "p2": "BUB-1318"},
+        {"id": "031", "name": "陳冠仲", "loc": "404", "p1": "BQB-9292", "p2": ""},
+        {"id": "032", "name": "林慧珊", "loc": "405", "p1": "AQR-7682", "p2": ""},
+        {"id": "033", "name": "蘇麗盆", "loc": "406", "p1": "7222-V2", "p2": "CAE-2520"},
+        {"id": "034", "name": "黃俊偉", "loc": "407", "p1": "AZK-0336", "p2": ""},
+        {"id": "035", "name": "許峻祥", "loc": "健體", "p1": "ATW-6231", "p2": "BJM-9252"},
+        {"id": "036", "name": "侯明良", "loc": "302", "p1": "6582-Gk", "p2": "BYU-6582"},
+        {"id": "037", "name": "楊東裕", "loc": "303", "p1": "AME-1635", "p2": ""},
+        {"id": "038", "name": "方鳳吟", "loc": "411", "p1": "BEY-6729", "p2": ""},
+        {"id": "039", "name": "梁宜霖", "loc": "307", "p1": "0618-SW", "p2": "BDB-1811"},
+        {"id": "040", "name": "姚孟佑", "loc": "304", "p1": "QP-9928", "p2": "ARB-9928"},
+        {"id": "041", "name": "徐明毅", "loc": "603", "p1": "1269-GF", "p2": ""},
+        {"id": "042", "name": "賴冠竹", "loc": "604", "p1": "ARV-5199", "p2": "BQJ-6865"},
+        {"id": "043", "name": "鄭凱元", "loc": "606", "p1": "BDL-5663", "p2": ""},
+        {"id": "045", "name": "鄭佳蓉", "loc": "609", "p1": "BAX-6328", "p2": ""},
+        {"id": "046", "name": "吳俐璇", "loc": "608", "p1": "AQL-3826", "p2": ""},
+        {"id": "047", "name": "劉香微", "loc": "108", "p1": "AUG-1213", "p2": ""},
+        {"id": "048", "name": "王宗興", "loc": "502", "p1": "8529-E7", "p2": ""},
+        {"id": "049", "name": "陳儒霖", "loc": "503", "p1": "YW-3613", "p2": ""},
+        {"id": "050", "name": "蔡佳男", "loc": "402", "p1": "BMT-8028", "p2": ""},
+        {"id": "051", "name": "蘇首銘", "loc": "410", "p1": "BJL-7687", "p2": ""},
+        {"id": "052", "name": "陳眉期", "loc": "205", "p1": "AKD-5959", "p2": "BFK-2299"},
+        {"id": "053", "name": "張盈瑩", "loc": "學務處-生教", "p1": "AHS-1161", "p2": ""},
+        {"id": "054", "name": "戴秀梅", "loc": "午餐中心", "p1": "AWT-9680", "p2": ""},
+        {"id": "055", "name": "許瑛珍", "loc": "自然", "p1": "AFT-8296", "p2": "ARD-3057"},
+        {"id": "056", "name": "吳玉燕", "loc": "幼兒園", "p1": "AZE-3656", "p2": ""},
+        {"id": "057", "name": "陳麗如", "loc": "幼兒園", "p1": "7812-WX", "p2": ""},
+        {"id": "058", "name": "湯家怡", "loc": "幼兒園", "p1": "BYV-0182", "p2": ""},
+        {"id": "059", "name": "謝依玲", "loc": "幼兒園", "p1": "ARE-5808", "p2": ""},
+        {"id": "060", "name": "施任文", "loc": "102", "p1": "BHY-1251", "p2": "CBW-3298"},
+        {"id": "061", "name": "蔡維倫", "loc": "科任", "p1": "3916-YH", "p2": "5815-UG"},
+        {"id": "062", "name": "覃碩華", "loc": "科任", "p1": "AMA-8316", "p2": "BJU-2552"},
+        {"id": "063", "name": "鄭涵曦", "loc": "科任", "p1": "AFT-3701", "p2": ""},
+        {"id": "064", "name": "謝淑惠", "loc": "科任", "p1": "6112-V2", "p2": ""},
+        {"id": "065", "name": "陳惠怡", "loc": "科任", "p1": "AVD-3361", "p2": "N8-2637"},
+        {"id": "066", "name": "陳怡采", "loc": "科任", "p1": "AHX-8910", "p2": "AQL-2880"},
+        {"id": "067", "name": "張家甄", "loc": "109", "p1": "BMU-5528", "p2": "BWZ-2971"},
+        {"id": "068", "name": "蔡漢誠", "loc": "科任", "p1": "AFU-7898", "p2": "BUU-5381"},
+        {"id": "069", "name": "張雅敏", "loc": "英語", "p1": "BEX-0650", "p2": ""},
+        {"id": "070", "name": "王俐喬", "loc": "英語", "p1": "BMY-3082", "p2": ""},
+        {"id": "071", "name": "蕭凱亭", "loc": "英語", "p1": "AVL-9295", "p2": "BUL-2290"},
+        {"id": "072", "name": "袁蜀賢", "loc": "英語", "p1": "2455-DS", "p2": "BUC-2298"},
+        {"id": "073", "name": "江昭儀", "loc": "健康中心", "p1": "AHU-5206", "p2": "9615-LF"},
+        {"id": "074", "name": "郭宏信", "loc": "專輔", "p1": "AJZ-1700", "p2": "ANL-9623"},
+        {"id": "075", "name": "陳思宇", "loc": "學前", "p1": "BHV-1511", "p2": ""},
+        {"id": "076", "name": "郭庭瑋", "loc": "505", "p1": "BMR-3817", "p2": ""},
+        {"id": "077", "name": "蔡玄晰", "loc": "學前", "p1": "AVM-9911", "p2": "BRM-9991"},
+        {"id": "079", "name": "邱靖雅", "loc": "409", "p1": "AMG-3782", "p2": "BPY-6630"},
+        {"id": "080", "name": "林緯婷", "loc": "藝文辦公室", "p1": "9279-Q8", "p2": ""},
+        {"id": "081", "name": "陳玥樺", "loc": "特教", "p1": "AHU-1676", "p2": ""},
+        {"id": "082", "name": "廖敏君", "loc": "藝文辦公室", "p1": "AFT-5686", "p2": "ARW-8016"},
+        {"id": "083", "name": "盧佳翎", "loc": "506", "p1": "BHX-3208", "p2": "BMP-1631"},
+        {"id": "085", "name": "馬玉玲", "loc": "藝文", "p1": "BEX-1815", "p2": ""},
+        {"id": "086", "name": "蘇惠美", "loc": "204", "p1": "BTH-9806", "p2": "2476-WQ"},
+        {"id": "088", "name": "蘇映竹", "loc": "廚房", "p1": "ASW-0201", "p2": ""},
+        {"id": "089", "name": "高淑華", "loc": "合作社", "p1": "BQB -0827", "p2": "0292-ZL"},
+        {"id": "090", "name": "戴偉晉", "loc": "學務處(安順館)", "p1": "9317-J2", "p2": "ANP-5920"},
+        {"id": "091", "name": "卓祺斌", "loc": "602", "p1": "BTG-3560", "p2": ""},
+        {"id": "092", "name": "黃復琳", "loc": "507", "p1": "AVG-5089", "p2": ""},
+        {"id": "093", "name": "周玉婷", "loc": "英語3", "p1": "BTW-5127", "p2": ""},
+        {"id": "094", "name": "洪晶晶", "loc": "印尼語", "p1": "BTZ-1573", "p2": ""},
+        {"id": "095", "name": "郭雅苓", "loc": "廚房(廚工)", "p1": "BMT-2970", "p2": ""},
+        {"id": "096", "name": "金淑蘭", "loc": "鐘點教師", "p1": "BTG-8735", "p2": ""},
+        {"id": "097", "name": "吳昀蓁", "loc": "家長-會長", "p1": "BHX-0333", "p2": "BQM-2688"},
+        {"id": "201", "name": "賴衣宸", "loc": "故事組", "p1": "2892-SR", "p2": ""},
+        {"id": "202", "name": "李惠子", "loc": "圖書組", "p1": "BYZ-1088", "p2": ""},
+        {"id": "203", "name": "曾秀鈴", "loc": "故事組", "p1": "708-LWT", "p2": ""},
+        {"id": "204", "name": "莊秋麗", "loc": "課輔組", "p1": "AQQ-5326", "p2": ""},
+        {"id": "205", "name": "黃洛捷", "loc": "故事組", "p1": "BRZ-5787", "p2": ""},
+        {"id": "206", "name": "林姿涵", "loc": "故事組", "p1": "ARZ-7736 ", "p2": ""},
+        {"id": "207", "name": "陳雅君", "loc": "圖書組", "p1": "BUC-0566", "p2": ""},
+        {"id": "208", "name": "邱玉雪", "loc": "課輔組", "p1": "BDQ-3963", "p2": ""},
+        {"id": "209", "name": "邱淑嬌", "loc": "圖書組", "p1": "3269-JY", "p2": ""},
+        {"id": "210", "name": "賴玟靜", "loc": "故事組", "p1": "BMT-9808", "p2": ""},
+        {"id": "211", "name": "蘇玟分", "loc": "故事組", "p1": "BTF-3872", "p2": ""},
+        {"id": "212", "name": "陳燕萍", "loc": "故事組", "p1": "BYS-0529", "p2": ""},
+        {"id": "213", "name": "郭祐禎", "loc": "志工", "p1": "APX-6990", "p2": ""},
+        {"id": "214", "name": "郭荃詠", "loc": "圖書組", "p1": "BCM-6967", "p2": ""},
+        {"id": "215", "name": "常愛", "loc": "故事組", "p1": "ACK-6189", "p2": ""},
+        {"id": "216", "name": "何金蘭", "loc": "圖書組", "p1": "BUE-6157", "p2": ""},
+        {"id": "217", "name": "吳心蘋", "loc": "圖書組", "p1": "AML8309", "p2": ""},
+        {"id": "218", "name": "蔡宜靜", "loc": "圖書組", "p1": "BHV-8997", "p2": ""},
+        {"id": "219", "name": "陳韻安", "loc": "志工", "p1": "9922-E6", "p2": ""},
+        {"id": "220", "name": "吳岱華", "loc": "圖書組", "p1": "2436-XR", "p2": "BZJ-8699"},
+        {"id": "221", "name": "陳盈如", "loc": "圖書組", "p1": "BMY-6022", "p2": ""},
+        {"id": "222", "name": "楊佳芳", "loc": "故事組", "p1": "BDA-7662", "p2": ""},
+        {"id": "223", "name": "程ㄧ珍", "loc": "故事組", "p1": "AZP-3326", "p2": ""},
+        {"id": "224", "name": "葉亞琴", "loc": "故事組", "p1": "BHX-5920", "p2": "BUD-5930"},
+        {"id": "225", "name": "許珮琪", "loc": "故事組", "p1": "AUT-7569", "p2": ""},
+        {"id": "226", "name": "劉雅嫻", "loc": "圖書組", "p1": "BWA-9077", "p2": ""},
+        {"id": "227", "name": "高玉玲", "loc": "志工", "p1": "ASZ-0636", "p2": ""},
+        {"id": "228", "name": "方玟雅", "loc": "故事組", "p1": "3657-ZC", "p2": ""},
+        {"id": "301", "name": "蕭伍宏", "loc": "遊戲初階班", "p1": "1726-K8", "p2": ""},
+        {"id": "302", "name": "吳育庭", "loc": "羊毛氈戳戳樂", "p1": "6W-6110", "p2": ""},
+        {"id": "303", "name": "姚藹珊", "loc": "繪畫黏土", "p1": "ACK-5337", "p2": ""},
+        {"id": "304", "name": "黃淑淵", "loc": "兒童彩繪", "p1": "AVM-6353", "p2": ""},
+        {"id": "305", "name": "沈坊語", "loc": "週五圍棋", "p1": "BUE-9355", "p2": ""},
+        {"id": "306", "name": "梁建行", "loc": "作文", "p1": "BDE-1918", "p2": "4705-Q8"},
+        {"id": "307", "name": "陳文如", "loc": "未來科學-AI機器人", "p1": "AQM-6880", "p2": ""},
+        {"id": "308", "name": "黃慶祥", "loc": "跆拳道", "p1": "BHX-0353", "p2": ""},
+        {"id": "309", "name": "周修賢", "loc": "才藝班", "p1": "AXS-2175", "p2": ""},
+        {"id": "310", "name": "李明謙", "loc": "社團老師", "p1": "BVY-8619", "p2": ""},
+        {"id": "311", "name": "侯書暐", "loc": "Roblox社團", "p1": "AJZ-5550", "p2": ""},
+        {"id": "312", "name": "黃慶祥", "loc": "社團老師", "p1": "BHX-0353", "p2": ""},
+        {"id": "313", "name": "謝沛狄", "loc": "社團老師", "p1": "BUD-1976", "p2": ""},
+        {"id": "314", "name": "譚嘉祥", "loc": "馬來語老師", "p1": "BUF-1650", "p2": ""},
+        {"id": "315", "name": "杜進郎", "loc": "閩南語老師", "p1": "BDB-3108", "p2": ""},
+        {"id": "316", "name": "林作炎", "loc": "客語老師", "p1": "ASV-9308", "p2": ""},
+        {"id": "317", "name": "高素珍", "loc": "泰雅語老師", "p1": "BEX-1625", "p2": ""},
+        {"id": "318", "name": "洪晶晶", "loc": "印尼語老師", "p1": "BTZ-1573", "p2": ""},
+        {"id": "319", "name": "林孟蓉", "loc": "才藝班", "p1": "BNC-6829", "p2": ""},
+        {"id": "320", "name": "吳惠萱", "loc": "才藝班", "p1": "1075-YH", "p2": ""},
+        {"id": "321", "name": "林珮芸", "loc": "才藝班", "p1": "9580-UN", "p2": ""}
+    ];
+
+    const tableBody = document.getElementById('tableBody');
+    const countDisplay = document.getElementById('countDisplay');
+
+    // 初始化：顯示所有資料
+    function init() {
+        renderTable(dataList);
+    }
+
+    // 渲染表格函式
+    function renderTable(data) {
+        tableBody.innerHTML = '';
+        if (data.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="no-data">查無符合條件的資料</td></tr>';
+            countDisplay.innerText = `找到 0 筆`;
+            return;
+        }
+
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><span class="id-badge">${item.id}</span></td>
+                <td><strong>${item.name}</strong></td>
+                <td><span class="loc-text">${item.loc}</span></td>
+                <td><span class="plate-text">${item.p1 || '-'}</span></td>
+                <td><span class="plate-text">${item.p2 || '-'}</span></td>
+            `;
+            tableBody.appendChild(row);
+        });
+        countDisplay.innerText = `顯示中：${data.length} 筆`;
+    }
+
+    // 過濾搜尋邏輯
+    function filterTable() {
+        const query = document.getElementById('searchInput').value.trim().toUpperCase();
+        
+        const filtered = dataList.filter(item => 
+            item.id.includes(query) || 
+            item.name.includes(query) ||
+            item.p1.toUpperCase().replace(/-/g, '').includes(query.replace(/-/g, '')) ||
+            item.p2.toUpperCase().replace(/-/g, '').includes(query.replace(/-/g, ''))
+        );
+        
+        renderTable(filtered);
+    }
+
+    // 重設搜尋
+    function resetSearch() {
+        document.getElementById('searchInput').value = '';
+        renderTable(dataList);
+    }
+
+    init();
+</script>
+
+</body>
+</html>
